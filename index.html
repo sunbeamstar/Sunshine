@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sunshine</title>
+<meta name="description" content="Sunshine — prototipo de red social con UI profesional. Demo con persistencia local." />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f7f8fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --text: #0f172a;
+    --accent: #f59e0b; /* dorado/amarillo sunshine */
+    --accent-2: #ff7ab6; /* rosa suave opcional */
+    --glass: rgba(255,255,255,0.6);
+    --shadow: 0 8px 28px rgba(14, 22, 34, 0.08);
+    --radius: 14px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color-scheme: light;
+    --max-width: 1200px;
+  }
+  /* Dark theme overrides (will be toggled via .dark on body) */
+  body.dark{
+    --bg: #0b1020;
+    --card: #0f1724;
+    --muted: #9aa3b2;
+    --text: #e6eef8;
+    --shadow: 0 8px 28px rgba(2,6,23,0.6);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background: linear-gradient(180deg, rgba(255,248,238,0.4), rgba(255,250,243,0.2)), var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    padding:20px;
+  }
+  a{color:inherit;text-decoration:none}
+  button{font: inherit; cursor: pointer; }
+
+  /* Layout */
+  .app{
+    max-width: var(--max-width);
+    margin:0 auto;
+    display:grid;
+    grid-template-rows: auto 1fr;
+    gap:18px;
+  }
+
+  header.app-header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3));
+    border-radius:12px;
+    box-shadow: var(--shadow);
+    position:sticky;
+    top:20px;
+    z-index:20;
+  }
+  .brand{
+    display:flex; gap:12px; align-items:center;
+  }
+  .logo{
+    width:52px; height:52px; border-radius:12px;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-weight:800; font-size:18px;
+    box-shadow: 0 6px 18px rgba(245,158,11,0.2), inset 0 -6px 20px rgba(255,255,255,0.06);
+  }
+  .brand .title{ font-weight:700; font-size:18px; }
+  .brand .subtitle{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+  .header-actions{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+
+  .btn{
+    background:var(--accent); color:white; border:0; padding:8px 12px; border-radius:10px; box-shadow: 0 6px 14px rgba(245,158,11,0.12);
+    font-weight:600;
+  }
+  .btn.ghost{
+    background:transparent; color:var(--text); border:1px solid rgba(0,0,0,0.06);
+  }
+  .icon-btn{ background:transparent; border:0; padding:8px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; }
+
+  /* Grid main */
+  .main-grid{
+    display:grid;
+    grid-template-columns: 280px 1fr 320px;
+    gap:20px;
+    align-items:start;
+  }
+
+  /* Cards */
+  .card{
+    background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);
+  }
+
+  /* Sidebar left */
+  .profile-mini{ display:flex; gap:12px; align-items:center; }
+  .avatar{
+    width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#fff,#f3f4f6);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; color:var(--text);
+  }
+  .muted{ color:var(--muted); font-size:13px; }
+
+  nav.left-nav{ margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+  nav.left-nav a{ padding:10px; border-radius:10px; display:flex; gap:10px; align-items:center; color:var(--muted); border:1px dashed transparent; }
+  nav.left-nav a:hover{ background: rgba(0,0,0,0.03); color:var(--text); }
+
+  /* Composer */
+  .composer{ display:flex; gap:12px; align-items:flex-start; }
+  .composer textarea{ width:100%; min-height:96px; padding:12px; border-radius:12px; border:1px solid rgba(0,0,0,0.06); resize:vertical; font-size:15px; background:transparent; color:var(--text); }
+  .composer .controls{ display:flex; gap:8px; align-items:center; margin-top:8px; }
+
+  /* Feed posts */
+  .post{ border-radius:12px; padding:12px; margin-bottom:14px; border:1px solid rgba(0,0,0,0.04) }
+  .post .meta{ display:flex; gap:12px; align-items:flex-start; }
+  .post .meta .info{ flex:1; }
+  .post .img-wrap img{ width:100%; border-radius:10px; display:block; margin-top:10px; }
+
+  .actions{ display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+  .pill{ background:transparent; border:1px solid rgba(0,0,0,0.06); padding:6px 10px; border-radius:999px; font-size:13px; color:var(--muted); }
+
+  /* Right column */
+  .search{ display:flex; gap:8px; margin-top:8px; align-items:center; }
+  .search input{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(0,0,0,0.06); }
+
+  .trending-list{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+  .trend{ padding:10px; border-radius:8px; background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.02)); border:1px solid rgba(0,0,0,0.04); }
+
+  /* Modals */
+  .modal-backdrop{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.5); z-index:60; }
+  .modal{ width:720px; max-width:96%; border-radius:12px; padding:18px; }
+
+  /* Responsive */
+  @media (max-width:1100px){ .main-grid{ grid-template-columns: 1fr; } .profile-left, .rightcol{ order:2 } .feed{ order:1 } header.app-header{ position:static } }
+  @media (max-width:640px){ .logo{width:44px;height:44px} .avatar{width:48px;height:48px} .composer textarea{ min-height:72px } }
+
+  /* small helpers */
+  .flex{ display:flex } .space-between{ justify-content:space-between } .center{ align-items:center; }
+  .small{ font-size:13px; color:var(--muted) }
+  .hidden{ display:none }
+  .danger{ color:#dc2626 }
+  footer.app-footer{ text-align:center; color:var(--muted); font-size:13px; margin-top:18px; }
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="app-header card" role="banner" aria-label="Encabezado Sunshine">
+      <div class="brand" aria-hidden="true">
+        <div class="logo" aria-hidden="true">S☀</div>
+        <div>
+          <div class="title">Sunshine</div>
+          <div class="subtitle">Comparte tu luz — momentos reales</div>
+        </div>
+      </div>
+
+      <div class="header-actions" role="navigation" aria-label="Acciones de cabecera">
+        <button class="icon-btn" id="btn-theme" title="Alternar tema" aria-pressed="false" aria-label="Alternar tema">
+          <!-- simple sun/moon icon -->
+          <svg id="icon-theme" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5 5l1.5 1.5M18.5 18.5L20 20M5 19l1.5-1.5M18.5 5L20 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <div class="small" id="label-username">invitado</div>
+        <button class="btn ghost" id="btn-open-auth">Iniciar / Registro</button>
+      </div>
+    </header>
+
+    <main class="main-grid" role="main">
+      <!-- Left column -->
+      <aside class="profile-left">
+        <div class="card">
+          <div class="profile-mini" aria-hidden="false">
+            <div class="avatar" id="left-avatar">S</div>
+            <div>
+              <div id="left-name">Invitado</div>
+              <div class="muted" id="left-bio">Únete a Sunshine y comparte tu luz.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px" class="flex gap-8">
+            <button class="btn" id="btn-edit-profile">Editar perfil</button>
+            <button class="btn ghost" id="btn-follow">Seguir</button>
+          </div>
+
+          <nav class="left-nav" aria-label="Navegación">
+            <a href="#feed">🏠 Inicio</a>
+            <a href="#explore">🔎 Explorar</a>
+            <a href="#profile">👤 Mi perfil</a>
+            <a href="#messages">✉️ Mensajes</a>
+            <a href="#settings">⚙️ Ajustes</a>
+          </nav>
+
+          <div style="margin-top:12px" class="muted small">Etiquetas populares</div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="pill">#amanecer</span>
+            <span class="pill">#vibes</span>
+            <span class="pill">#sunny</span>
+            <span class="pill">#momentos</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Feed -->
+      <section class="feed">
+        <div class="card" id="composer-card" aria-label="Crear publicación">
+          <div class="composer">
+            <div class="avatar" id="composer-avatar">S</div>
+            <div style="flex:1">
+              <textarea id="composer-text" placeholder="¿Qué te ilumina hoy?" aria-label="Escribe una publicación"></textarea>
+              <div class="controls">
+                <label for="composer-image" class="btn ghost" style="display:inline-flex;align-items:center;gap:8px">📷 Foto</label>
+                <input type="file" id="composer-image" accept="image/*" class="hidden" />
+                <button class="btn" id="btn-post">Publicar</button>
+                <div style="margin-left:auto" class="muted small">Visibilidad: Público</div>
+              </div>
+              <div id="composer-preview" style="margin-top:10px"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="feed-container" style="margin-top:12px"></div>
+      </section>
+
+      <!-- Right: Explore & notifications -->
+      <aside class="rightcol">
+        <div class="card">
+          <div class="flex space-between center">
+            <div>
+              <div class="muted small">Buscar</div>
+              <div class="small">Personas o publicaciones</div>
+            </div>
+            <div>
+              <button class="btn ghost" id="btn-notifications">🔔 <span id="badge-notifs" class="small" style="margin-left:6px">0</span></button>
+            </div>
+          </div>
+
+          <div class="search">
+            <input id="search-input" placeholder="Buscar..." aria-label="Buscar en Sunshine">
+            <button class="btn ghost" id="btn-search">Ir</button>
+          </div>
+
+          <div id="search-results" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="muted small">Tendencias</div>
+          <div class="trending-list" id="trending">
+            <!-- dinámico -->
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="app-footer">Sunshine — Demo • Hecho con ☀️</footer>
+  </div>
+
+  <!-- Modal: Auth -->
+  <div id="modal-auth" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="modal card">
+      <div class="flex space-between center">
+        <h3 id="auth-title">Iniciar sesión</h3>
+        <button class="btn ghost" id="close-auth">Cerrar</button>
+      </div>
+
+      <div style="margin-top:10px">
+        <div id="auth-forms">
+          <div id="form-login">
+            <label class="small">Usuario</label>
+            <input id="login-username" placeholder="ej: sol" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <label class="small" style="margin-top:8px">Contraseña</label>
+            <input id="login-password" type="password" placeholder="********" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn" id="btn-login">Entrar</button>
+              <button class="btn ghost" id="btn-show-register">Crear cuenta</button>
+            </div>
+          </div>
+
+          <div id="form-register" class="hidden">
+            <label class="small">Nombre</label>
+            <input id="reg-name" placeholder="Sol Valeria" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <label class="small" style="margin-top:8px">Usuario</label>
+            <input id="reg-username" placeholder="sol" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <label class="small" style="margin-top:8px">Contraseña</label>
+            <input id="reg-password" type="password" placeholder="********" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <label class="small" style="margin-top:8px">Biografía</label>
+            <input id="reg-bio" placeholder="Amante de los amaneceres..." style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn" id="btn-register">Crear</button>
+              <button class="btn ghost" id="btn-show-login">Volver</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit profile -->
+  <div id="modal-profile" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+    <div class="modal card">
+      <div class="flex space-between center">
+        <h3 id="profile-title">Editar perfil</h3>
+        <button class="btn ghost" id="close-profile">Cerrar</button>
+      </div>
+      <div style="margin-top:10px">
+        <label class="small">Nombre</label>
+        <input id="edit-name" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+        <label class="small" style="margin-top:8px">Biografía</label>
+        <input id="edit-bio" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+        <label class="small" style="margin-top:8px">Avatar</label>
+        <input type="file" id="edit-avatar" accept="image/*" style="display:block;margin-top:6px">
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn" id="save-profile">Guardar</button>
+          <button class="btn ghost" id="cancel-profile">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Sunshine — Demo (single file)
+  - Estado en localStorage (no servidor)
+  - Usuarios, posts, likes, comentarios, notificaciones
+  - Diseño pensado para ser fácilmente migrado a React/Vue + Backend
+*/
+
+/* ---------------- utils ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const uid = (p='id') => p + '_' + Math.random().toString(36).slice(2,9);
+const DB_KEY = 'sunshine_db_v1';
+const SESSION_KEY = 'sunshine_session_v1';
+
+function now(){ return Date.now(); }
+function timeAgo(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return s + 's';
+  if(s<3600) return Math.floor(s/60) + 'm';
+  if(s<86400) return Math.floor(s/3600) + 'h';
+  return Math.floor(s/86400) + 'd';
+}
+function escapeHtml(str){ return String(str||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------------- DB ---------------- */
+function seedDB(){
+  const demo = {
+    users: [
+      {id:'u_admin', name:'Sol Admin', username:'sun', password:'demo123', bio:'Amaneceres y buena vibra', avatar:null, following:[]},
+      {id:'u_ana', name:'Ana L.', username:'ana', password:'ana123', bio:'Capturando momentos', avatar:null, following:[]}
+    ],
+    posts: [
+      {id:'p1', userId:'u_admin', text:'¡Bienvenido a Sunshine! Comparte tu luz. #amanecer', image:null, likes:['u_ana'], comments:[{id:uid('c'), userId:'u_ana', text:'Qué bonito!'}], created: now() - 3600*1000*6},
+      {id:'p2', userId:'u_ana', text:'Café + sol = perfecta mañana 🌞', image:null, likes:[], comments:[], created: now() - 3600*1000*1}
+    ],
+    notifications: []
+  };
+  localStorage.setItem(DB_KEY, JSON.stringify(demo));
+  return demo;
+}
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw) return seedDB();
+    return JSON.parse(raw);
+  }catch(e){
+    console.warn('DB corrupto, reseteando', e);
+    localStorage.removeItem(DB_KEY);
+    return seedDB();
+  }
+}
+let DB = loadDB();
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+
+/* ---------------- Session ---------------- */
+let SESSION = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+function currentUser(){ return SESSION ? DB.users.find(u=>u.id===SESSION.userId) : null; }
+function setSession(userId){
+  SESSION = {userId}; localStorage.setItem(SESSION_KEY, JSON.stringify(SESSION)); renderAll();
+}
+function clearSession(){ SESSION = null; localStorage.removeItem(SESSION_KEY); renderAll(); }
+
+/* ---------------- Render helpers ---------------- */
+const feedContainer = $('#feed-container');
+const composerAvatar = $('#composer-avatar');
+const leftAvatar = $('#left-avatar');
+const leftName = $('#left-name');
+const leftBio = $('#left-bio');
+const labelUsername = $('#label-username');
+const badgeNotifs = $('#badge-notifs');
+
+function renderAll(){
+  renderProfileMini();
+  renderFeed();
+  renderTrending();
+  renderNotifications();
+  updateHeader();
+}
+
+function renderProfileMini(){
+  const u = currentUser();
+  if(u){
+    leftAvatar.textContent = initials(u.name);
+    composerAvatar.textContent = initials(u.name);
+    leftName.textContent = u.name;
+    leftBio.textContent = u.bio || '';
+    labelUsername.textContent = '@' + u.username;
+  }else{
+    leftAvatar.textContent = 'S';
+    composerAvatar.textContent = 'S';
+    leftName.textContent = 'Invitado';
+    leftBio.textContent = 'Crea una cuenta para publicar';
+    labelUsername.textContent = 'invitado';
+  }
+}
+
+function initials(name){
+  return (name||'').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+}
+
+/* ---------------- Feed ---------------- */
+function renderFeed(){
+  feedContainer.innerHTML = '';
+  const posts = DB.posts.slice().sort((a,b)=>b.created - a.created);
+  for(const p of posts){
+    const user = DB.users.find(u=>u.id===p.userId) || {name:'Usuario', username:'anon'};
+    const el = document.createElement('article');
+    el.className = 'post card';
+    el.innerHTML = `
+      <div class="meta">
+        <div class="avatar">${initials(user.name)}</div>
+        <div class="info">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>${escapeHtml(user.name)}</strong> <span class="muted small">@${escapeHtml(user.username)}</span></div>
+            <div class="muted small">${timeAgo(p.created)}</div>
+          </div>
+          <div class="content" style="margin-top:8px">${escapeHtml(p.text || '')}</div>
+          ${p.image? `<div class="img-wrap"><img src="${p.image}" alt="imagen de publicación"></div>` : ''}
+          <div class="actions">
+            <button class="btn ghost btn-like" data-id="${p.id}" aria-label="Me gusta">❤ <span class="small">${p.likes.length}</span></button>
+            <button class="btn ghost btn-comment" data-id="${p.id}" aria-label="Comentar">💬 <span class="small">${p.comments.length}</span></button>
+            <button class="btn ghost btn-share" data-id="${p.id}" aria-label="Compartir">🔗</button>
+          </div>
+          <div class="comments" id="comments-${p.id}" style="margin-top:10px"></div>
+        </div>
+      </div>
+    `;
+    feedContainer.appendChild(el);
+
+    // render comments
+    const commentsEl = $(`#comments-${p.id}`);
+    for(const c of p.comments){
+      const cu = DB.users.find(u=>u.id===c.userId) || {name:'Anon'};
+      const cdiv = document.createElement('div');
+      cdiv.className = 'comment';
+      cdiv.style.marginBottom = '8px';
+      cdiv.innerHTML = `<strong>${escapeHtml(cu.name)}</strong> <div class="muted small">${escapeHtml(c.text)}</div>`;
+      commentsEl.appendChild(cdiv);
+    }
+  }
+
+  // bind actions
+  $$('.btn-like').forEach(b=> b.onclick = e => toggleLike(e.currentTarget.dataset.id));
+  $$('.btn-comment').forEach(b=> b.onclick = e => openCommentPrompt(e.currentTarget.dataset.id));
+  $$('.btn-share').forEach(b=> b.onclick = e => {
+    const id = e.currentTarget.dataset.id;
+    const url = location.href.split('#')[0] + '#post=' + id;
+    if(navigator.clipboard) navigator.clipboard.writeText(url).then(()=> alert('Enlace copiado'));
+  });
+}
+
+/* ---------------- Composer ---------------- */
+$('#composer-image').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    $('#composer-preview').innerHTML = `<img src="${ev.target.result}" style="max-width:100%;border-radius:10px">`;
+    $('#composer-preview').dataset.image = ev.target.result;
+  };
+  reader.readAsDataURL(f);
+});
+
+$('#btn-post').addEventListener('click', ()=>{
+  const user = currentUser(); if(!user) return alert('Inicia sesión para publicar');
+  const text = $('#composer-text').value.trim();
+  const image = $('#composer-preview').dataset.image || null;
+  if(!text && !image) return alert('Escribe algo o sube una imagen');
+  const p = { id: uid('p'), userId: user.id, text, image, likes: [], comments: [], created: now() };
+  DB.posts.push(p);
+  saveDB();
+  // clear composer
+  $('#composer-text').value=''; delete $('#composer-preview').dataset.image; $('#composer-preview').innerHTML='';
+  addNotification(null, `${user.name} publicó: "${text.slice(0,40)}"`);
+  renderAll();
+});
+
+/* ---------------- Likes & Comments ---------------- */
+function toggleLike(postId){
+  if(!SESSION) return alert('Inicia sesión para dar like');
+  const p = DB.posts.find(x=>x.id===postId); if(!p) return;
+  const idx = p.likes.indexOf(SESSION.userId);
+  if(idx>=0){ p.likes.splice(idx,1); addNotification(p.userId, `${currentUser().name} quitó like a tu publicación`); }
+  else{ p.likes.push(SESSION.userId); addNotification(p.userId, `${currentUser().name} le dio like a tu publicación`); }
+  saveDB(); renderAll();
+}
+
+function openCommentPrompt(postId){
+  if(!SESSION) return alert('Inicia sesión para comentar');
+  const text = prompt('Escribe tu comentario:');
+  if(text){
+    const p = DB.posts.find(x=>x.id===postId);
+    p.comments.push({ id: uid('c'), userId: SESSION.userId, text });
+    addNotification(p.userId, `${currentUser().name} comentó tu publicación: "${text.slice(0,40)}"`);
+    saveDB(); renderAll();
+  }
+}
+
+/* ---------------- Search & Trending ---------------- */
+$('#btn-search').onclick = ()=>{
+  const q = $('#search-input').value.trim().toLowerCase();
+  if(!q) return;
+  const users = DB.users.filter(u=> u.username.includes(q) || u.name.toLowerCase().includes(q)).slice(0,8);
+  const posts = DB.posts.filter(p=> p.text && p.text.toLowerCase().includes(q)).slice(0,6);
+  const out = [];
+  users.forEach(u=> out.push(`<div class="muted">Usuario: <strong>${escapeHtml(u.name)}</strong> @${escapeHtml(u.username)}</div>`));
+  posts.forEach(p=> out.push(`<div class="muted">Post: ${escapeHtml((p.text||'').slice(0,80))}</div>`));
+  $('#search-results').innerHTML = out.join('<hr>') || '<div class="muted">Sin resultados</div>';
+};
+
+function renderTrending(){
+  const t = ['#amanecer','#vibes','#sunshine','#momentos','#fotodeldía'];
+  $('#trending').innerHTML = t.map(x => `<div class="trend">${x}</div>`).join('');
+}
+
+/* ---------------- Notifications ---------------- */
+function addNotification(userId, text){
+  DB.notifications.unshift({ id: uid('n'), userId, text, date: now(), read: false });
+  DB.notifications = DB.notifications.slice(0,100);
+  saveDB();
+}
+
+function renderNotifications(){
+  const mine = DB.notifications.filter(n=> !n.userId || (SESSION && n.userId===SESSION.userId) || !SESSION).slice(0,6);
+  badgeNotifs.textContent = DB.notifications.filter(n=> !n.read).length;
+  // (For demo, we just update count; clicking bell shows a quick alert)
+}
+
+$('#btn-notifications').onclick = ()=>{
+  const mine = DB.notifications.slice(0,10);
+  if(mine.length===0) return alert('Sin notificaciones');
+  const text = mine.map(n=> `${timeAgo(n.date)} — ${n.text}`).join('\n\n');
+  alert(text);
+  // mark all as read
+  DB.notifications.forEach(n=> n.read = true); saveDB(); renderNotifications();
+};
+
+/* ---------------- Auth (simple, client-only) ---------------- */
+$('#btn-open-auth').onclick = ()=> showAuth();
+$('#close-auth').onclick = ()=> hideAuth();
+$('#btn-show-register').onclick = ()=> toggleAuthForms(true);
+$('#btn-show-login').onclick = ()=> toggleAuthForms(false);
+
+function showAuth(){ $('#modal-auth').classList.remove('hidden'); toggleAuthForms(false); $('#login-username').focus(); }
+function hideAuth(){ $('#modal-auth').classList.add('hidden'); }
+function toggleAuthForms(showRegister){ $('#form-login').classList.toggle('hidden', showRegister); $('#form-register').classList.toggle('hidden', !showRegister); $('#auth-title').textContent = showRegister ? 'Crear cuenta' : 'Iniciar sesión'; }
+
+/* Register */
+$('#btn-register').onclick = ()=>{
+  const name = $('#reg-name').value.trim();
+  const username = $('#reg-username').value.trim();
+  const password = $('#reg-password').value;
+  const bio = $('#reg-bio').value.trim();
+  if(!name || !username || !password) return alert('Completa nombre, usuario y contraseña');
+  if(DB.users.some(u=> u.username.toLowerCase() === username.toLowerCase())) return alert('El usuario ya existe');
+  const user = { id: uid('u'), name, username, password, bio, avatar: null, following: [] };
+  DB.users.push(user);
+  saveDB();
+  setSession(user.id);
+  hideAuth();
+};
+
+/* Login */
+$('#btn-login').onclick = ()=>{
+  const u = $('#login-username').value.trim();
+  const p = $('#login-password').value;
+  const found = DB.users.find(x=> x.username === u || x.username === u.toLowerCase());
+  if(!found || found.password !== p) return alert('Usuario o contraseña inválidos (demo: sol/demo123)');
+  setSession(found.id);
+  hideAuth();
+};
+
+/* Logout quick (double-click label) */
+labelUsername.ondblclick = ()=> {
+  if(SESSION && confirm('¿Cerrar sesión?')) clearSession();
+};
+
+/* ---------------- Profile edit ---------------- */
+$('#btn-edit-profile').onclick = ()=>{
+  const u = currentUser();
+  if(!u) return alert('Inicia sesión para editar tu perfil');
+  $('#edit-name').value = u.name; $('#edit-bio').value = u.bio || '';
+  $('#modal-profile').classList.remove('hidden');
+};
+
+$('#close-profile').onclick = ()=> $('#modal-profile').classList.add('hidden');
+$('#cancel-profile').onclick = ()=> $('#modal-profile').classList.add('hidden');
+
+$('#edit-avatar').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = ev => { $('#edit-avatar').dataset.preview = ev.target.result; };
+  r.readAsDataURL(f);
+});
+
+$('#save-profile').onclick = ()=>{
+  const u = currentUser(); if(!u) return;
+  u.name = $('#edit-name').value.trim() || u.name;
+  u.bio = $('#edit-bio').value.trim();
+  if($('#edit-avatar').dataset.preview) u.avatar = $('#edit-avatar').dataset.preview;
+  saveDB();
+  $('#modal-profile').classList.add('hidden');
+  renderAll();
+};
+
+/* ---------------- Follow (demo) ---------------- */
+$('#btn-follow').onclick = ()=>{
+  const u = currentUser(); if(!u) return alert('Inicia sesión primero');
+  const target = DB.users[1] || DB.users[0];
+  if(u.following.includes(target.id)){ u.following = u.following.filter(x=> x!==target.id); alert(`Has dejado de seguir a ${target.name}`); }
+  else { u.following.push(target.id); alert(`Ahora sigues a ${target.name}`); }
+  saveDB(); renderAll();
+};
+
+/* ---------------- Theme toggle ---------------- */
+$('#btn-theme').onclick = ()=>{
+  const isDark = document.body.classList.toggle('dark');
+  $('#btn-theme').setAttribute('aria-pressed', String(isDark));
+  // store preference
+  localStorage.setItem('sunshine_theme', isDark ? 'dark' : 'light');
+};
+(function restoreTheme(){
+  const t = localStorage.getItem('sunshine_theme');
+  if(t==='dark') document.body.classList.add('dark');
+})();
+
+/* ---------------- Init ---------------- */
+function init(){
+  renderAll();
+  // hash support: #post=id to scroll
+  if(location.hash.startsWith('#post=')){
+    const id = location.hash.split('=')[1];
+    setTimeout(()=> {
+      const el = document.querySelector(`[data-id='${id}']`);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 300);
+  }
+}
+init();
+
+/* expose for debugging (dev only) */
+window._DB = DB; window._saveDB = saveDB; window._SESSION = SESSION;
+
+<footer>
+  <p>sunshine.com</p>
+</footer>
+
+</script>
+</body>
+</html>
